@@ -1,98 +1,232 @@
-// ============================================================================
-//         PROJETO WAR ESTRUTURADO - DESAFIO DE CÓDIGO
-// ============================================================================
-//        
-// ============================================================================
-//
-// OBJETIVOS:
-// - Modularizar completamente o código em funções especializadas.
-// - Implementar um sistema de missões para um jogador.
-// - Criar uma função para verificar se a missão foi cumprida.
-// - Utilizar passagem por referência (ponteiros) para modificar dados e
-//   passagem por valor/referência constante (const) para apenas ler.
-// - Foco em: Design de software, modularização, const correctness, lógica de jogo.
-//
-// ============================================================================
-
-// Inclusão das bibliotecas padrão necessárias para entrada/saída, alocação de memória, manipulação de strings e tempo.
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 // --- Constantes Globais ---
-// Definem valores fixos para o número de territórios, missões e tamanho máximo de strings, facilitando a manutenção.
+#define MAX_LIVROS 50
+#define MAX_EMPRESTIMOS 100
+#define TAM_STRING 100
 
-// --- Estrutura de Dados ---
-// Define a estrutura para um território, contendo seu nome, a cor do exército que o domina e o número de tropas.
+// --- Definição das Estruturas ---
+/**
+ * @brief Estrutura que representa um Livro no sistema da biblioteca.
+ * Armazena as informações básicas de um livro e seu status de disponibilidade.
+ */
+struct Livro {
+    char nome[TAM_STRING];      /**< Título do livro. */
+    char autor[TAM_STRING];     /**< Nome do autor do livro. */
+    char editora[TAM_STRING];   /**< Nome da editora responsável pela publicação. */
+    int edicao;                 /**< Número ou ano da edição. */
+    int disponivel;             /**< Flag de status de disponibilidade (1: Disponível, 0: Emprestado). */
+};
+
+/**
+ * @brief Estrutura que representa um empréstimo de livro.
+ * Nota: Esta estrutura é inferida a partir dos protótipos e da função main.
+ */
+struct Emprestimo {
+    int idLivro;                /**< Índice do livro emprestado no array 'biblioteca'. */
+    char leitor[TAM_STRING];    /**< Nome do leitor. (Inferido) */
+    // Campos adicionais como data poderiam ser adicionados aqui.
+};
 
 // --- Protótipos das Funções ---
-// Declarações antecipadas de todas as funções que serão usadas no programa, organizadas por categoria.
-// Funções de setup e gerenciamento de memória:
-// Funções de interface com o usuário:
-// Funções de lógica principal do jogo:
-// Função utilitária:
+// Declarar as funções aqui permite que a 'main' as chame antes de suas definições.
+void limparBufferEntrada();
+void exibirMenu();
+void cadastrarLivro(struct Livro *biblioteca, int *totallivros);
+void listarLivros(const struct Livro *biblioteca, int totallivros); // 'const' indica que a função só lê.
+void realizarEmprestimo(struct Livro *biblioteca, int totallivros, struct Emprestimo *emprestimos, int *totalEmprestimos);
+void listarEmprestimos(const struct Livro *biblioteca, const struct Emprestimo *emprestimos, int totalEmprestimos);
+void liberarMemoria(struct Livro *biblioteca, struct Emprestimo *emprestimos);
 
-// --- Função Principal (main) ---
-// Função principal que orquestra o fluxo do jogo, chamando as outras funções em ordem.
+
 int main() {
-    // 1. Configuração Inicial (Setup):
-    // - Define o locale para português.
-    // - Inicializa a semente para geração de números aleatórios com base no tempo atual.
-    // - Aloca a memória para o mapa do mundo e verifica se a alocação foi bem-sucedida.
-    // - Preenche os territórios com seus dados iniciais (tropas, donos, etc.).
-    // - Define a cor do jogador e sorteia sua missão secreta.
+    // Alocação dinâmica de memória para os arrays de estruturas
+    struct Livro *biblioteca = (struct Livro *) calloc(MAX_LIVROS, sizeof(struct Livro));
+    // Note: A alocação de 'emprestimos' estava cortada, foi completada com base na lógica.
+    struct Emprestimo *emprestimos = (struct Emprestimo *) malloc(MAX_EMPRESTIMOS * sizeof(struct Emprestimo));
 
-    // 2. Laço Principal do Jogo (Game Loop):
-    // - Roda em um loop 'do-while' que continua até o jogador sair (opção 0) ou vencer.
-    // - A cada iteração, exibe o mapa, a missão e o menu de ações.
-    // - Lê a escolha do jogador e usa um 'switch' para chamar a função apropriada:
-    //   - Opção 1: Inicia a fase de ataque.
-    //   - Opção 2: Verifica se a condição de vitória foi alcançada e informa o jogador.
-    //   - Opção 0: Encerra o jogo.
-    // - Pausa a execução para que o jogador possa ler os resultados antes da próxima rodada.
+    if (biblioteca == NULL || emprestimos == NULL) {
+        printf("Erro: Falha ao alocar memoria.\n");
+        return 1;
+    }
 
-    // 3. Limpeza:
-    // - Ao final do jogo, libera a memória alocada para o mapa para evitar vazamentos de memória.
+    int totallivros = 0;
+    int totalEmprestimos = 0;
+    int opcao;
+
+    do {
+        exibirMenu();
+        if (scanf("%d", &opcao) != 1) { // Verifica se a leitura falhou (não é um número)
+             // Tenta limpar o buffer se a leitura não for um número
+            limparBufferEntrada();
+            opcao = -1; // Define uma opção inválida para cair no default
+        } else {
+            limparBufferEntrada(); // Limpa o buffer após scanf ter sucesso
+        }
+
+
+        switch (opcao) {
+            case 1:
+                // Passamos o endereço de 'totallivros' (&) para que a função possa MODIFICAR seu valor.
+                cadastrarLivro(biblioteca, &totallivros);
+                break;
+            case 2:
+                // Passamos apenas o valor de 'totallivros', pois a função só precisa LER.
+                listarLivros(biblioteca, totallivros);
+                break;
+            case 3:
+                realizarEmprestimo(biblioteca, totallivros, emprestimos, &totalEmprestimos);
+                break;
+            case 4:
+                listarEmprestimos(biblioteca, emprestimos, totalEmprestimos);
+                break;
+            case 0:
+                printf("\nSaindo do sistema...\n");
+                break;
+            default:
+                printf("\nOpcao invalida! Pressione Enter para tentar novamente.");
+                getchar(); // Espera o usuário pressionar Enter
+                break;
+        }
+    } while (opcao != 0);
+
+    // Chama a função dedicada para liberar a memória alocada.
+    liberarMemoria(biblioteca, emprestimos);
 
     return 0;
 }
 
 // --- Implementação das Funções ---
 
-// alocarMapa():
-// Aloca dinamicamente a memória para o vetor de territórios usando calloc.
-// Retorna um ponteiro para a memória alocada ou NULL em caso de falha.
+void limparBufferEntrada() {
+    int c;
+    while (((c = getchar()) != '\n' && c != EOF));
+}
 
-// inicializarTerritorios():
-// Preenche os dados iniciais de cada território no mapa (nome, cor do exército, número de tropas).
-// Esta função modifica o mapa passado por referência (ponteiro).
+/**
+ * @brief Exibe o menu principal de opções para o usuário.
+ */
+void exibirMenu() {
+    printf("======================================\n");
+    printf("     BIBLIOTECA - PARTE 3 (MESTRE)\n");
+    printf("======================================\n");
+    printf("1 - Cadastrar novo livro\n");
+    printf("2 - Listar todos os livros\n");
+    printf("3 - Realizar emprestimo\n");
+    printf("4 - Listar emprestimos\n");
+    printf("0 - Sair\n");
+    printf("--------------------------------------\n");
+    printf("Escolha uma opcao: ");
+}
 
-// liberarMemoria():
-// Libera a memória previamente alocada para o mapa usando free.
+/**
+ * @brief Adiciona um novo registro de livro à biblioteca.
+ *
+ * Solicita ao usuário os dados do livro e os armazena na próxima posição
+ * disponível do array 'biblioteca'. O contador de livros é atualizado.
+ *
+ * @param biblioteca Ponteiro para o array de estruturas struct Livro.
+ * @param totallivros Ponteiro para a variável que armazena o número
+ * de livros cadastrados.
+ */
+void cadastrarLivro(struct Livro *biblioteca, int *totallivros) {
+    printf("--- Cadastro de Novo Livro ---\n\n");
 
-// exibirMenuPrincipal():
-// Imprime na tela o menu de ações disponíveis para o jogador.
+    if (*totallivros < MAX_LIVROS) {
+        int indice = *totallivros; // Usa o valor apontado pelo ponteiro para o índice.
 
-// exibirMapa():
-// Mostra o estado atual de todos os territórios no mapa, formatado como uma tabela.
-// Usa 'const' para garantir que a função apenas leia os dados do mapa, sem modificá-los.
+        printf("Digite o nome do livro: ");
+        fgets(biblioteca[indice].nome, TAM_STRING, stdin);
+        biblioteca[indice].nome[strcspn(biblioteca[indice].nome, "\n")] = 0; // Remove newline
 
-// exibirMissao():
-// Exibe a descrição da missão atual do jogador com base no ID da missão sorteada.
+        printf("Digite o autor: ");
+        fgets(biblioteca[indice].autor, TAM_STRING, stdin);
+        biblioteca[indice].autor[strcspn(biblioteca[indice].autor, "\n")] = 0; // Remove newline
 
-// faseDeAtaque():
-// Gerencia a interface para a ação de ataque, solicitando ao jogador os territórios de origem e destino.
-// Chama a função simularAtaque() para executar a lógica da batalha.
+        printf("Digite a editora: ");
+        fgets(biblioteca[indice].editora, TAM_STRING, stdin);
+        biblioteca[indice].editora[strcspn(biblioteca[indice].editora, "\n")] = 0; // Remove newline
 
-// simularAtaque():
-// Executa a lógica de uma batalha entre dois territórios.
-// Realiza validações, rola os dados, compara os resultados e atualiza o número de tropas.
-// Se um território for conquistado, atualiza seu dono e move uma tropa.
+        printf("Digite a edicao (numero inteiro): ");
+        if (scanf("%d", &biblioteca[indice].edicao) != 1) {
+            printf("Entrada invalida para edicao. Definindo para 0.\n");
+            biblioteca[indice].edicao = 0;
+            limparBufferEntrada();
+        } else {
+             limparBufferEntrada();
+        }
 
-// sortearMissao():
-// Sorteia e retorna um ID de missão aleatório para o jogador.
 
-// verificarVitoria():
-// Verifica se o jogador cumpriu os requisitos de sua missão atual.
-// Implementa a lógica para cada tipo de missão (destruir um exército ou conquistar um número de territórios).
-// Retorna 1 (verdadeiro) se a missão foi cumprida, e 0 (falso) caso contrário.
+        biblioteca[indice].disponivel = 1; // Novo livro sempre começa como disponível.
 
-// limparBufferEntrada():
-// Função utilitária para limpar o buffer de entrada do teclado (stdin), evitando problemas com leituras consecutivas de scanf e getchar.
+        (*totallivros)++; // Incrementa o valor da variável original na main.
+        printf("\nLivro cadastrado com sucesso!\n");
+    } else {
+        printf("Biblioteca cheia!\n");
+    }
+
+    printf("\nPressione Enter para continuar...");
+    getchar();
+}
+
+/**
+ * @brief Lista todos os livros cadastrados na biblioteca.
+ *
+ * @param biblioteca O array (ponteiro constante, apenas para leitura) de livros.
+ * @param totallivros O número de livros (passagem por valor).
+ */
+void listarLivros(const struct Livro *biblioteca, int totallivros) {
+    printf("--- Lista de Livros Cadastrados ---\n\n");
+
+    if (totallivros == 0) {
+        printf("Nenhum livro cadastrado ainda.\n");
+    } else {
+        for (int i = 0; i < totallivros; i++) {
+            printf("--------------------------------------\n");
+            printf("LIVRO %d\n", i + 1);
+            printf("Nome: %s\n", biblioteca[i].nome);
+            printf("Autor: %s\n", biblioteca[i].autor);
+            // Editora e Edicao não estavam no print, mas seriam adicionados aqui
+            // printf("Editora: %s\n", biblioteca[i].editora);
+            // printf("Edicao: %d\n", biblioteca[i].edicao);
+            printf("Status: %s\n", biblioteca[i].disponivel ? "Disponivel" : "Emprestado");
+        }
+    }
+    printf("--------------------------------------\n");
+    printf("\nPressione Enter para continuar...");
+    getchar();
+}
+
+// --- Funções com protótipos mas sem implementação nos trechos fornecidos ---
+
+/**
+ * @brief Função placeholder para realizar o empréstimo de um livro.
+ */
+void realizarEmprestimo(struct Livro *biblioteca, int totallivros, struct Emprestimo *emprestimos, int *totalEmprestimos) {
+    printf("\n[Funcao 'realizarEmprestimo' nao implementada.]\n");
+    printf("\nPressione Enter para continuar...");
+    getchar();
+}
+
+/**
+ * @brief Função placeholder para listar todos os empréstimos realizados.
+ */
+void listarEmprestimos(const struct Livro *biblioteca, const struct Emprestimo *emprestimos, int totalEmprestimos) {
+    printf("\n[Funcao 'listarEmprestimos' nao implementada.]\n");
+    printf("\nPressione Enter para continuar...");
+    getchar();
+}
+
+/**
+ * @brief Libera a memória alocada dinamicamente para os arrays de livros e empréstimos.
+ *
+ * @param biblioteca Ponteiro para o array de livros a ser liberado.
+ * @param emprestimos Ponteiro para o array de empréstimos a ser liberado.
+ */
+void liberarMemoria(struct Livro *biblioteca, struct Emprestimo *emprestimos) {
+    free(biblioteca);
+    free(emprestimos);
+    printf("Memoria liberada com sucesso.\n");
+}
